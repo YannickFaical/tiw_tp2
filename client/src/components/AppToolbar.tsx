@@ -1,16 +1,20 @@
-import { useQna } from '../context/QnaContext'
+import { useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState } from '../store'
+import { setCurrentEvent } from '../slices/eventsSlice'
 import { motion } from 'framer-motion'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
-import { useState } from 'react'
 
 export const AppToolbar = () => {
-  const { state, setCurrentEvent, isConnected } = useQna()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const dispatch = useDispatch()
+  const events = useSelector((state: RootState) => state.events.events)
+  const currentEventId = useSelector((state: RootState) => state.events.currentEventId)
 
-  const handleEventChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
-    console.log('Selected event:', value)
-    setCurrentEvent(value || null)
+  const handleEventChange = (eventId: string) => {
+    console.log('Selected event:', eventId)
+    dispatch(setCurrentEvent(eventId))
+    setIsMobileMenuOpen(false)
   }
 
   return (
@@ -28,26 +32,55 @@ export const AppToolbar = () => {
             >
               TIW8 - Q&A App
             </motion.h1>
-            <div className="ml-4 flex items-center">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`} />
-              <span className="text-sm text-gray-500">
-                {isConnected ? 'Connecté' : 'Déconnecté'}
-              </span>
-            </div>
           </div>
 
           {/* Desktop menu */}
           <div className="hidden sm:flex sm:items-center">
-            <select 
-              onChange={handleEventChange}
-              value={state.currentEventId || ''}
-              className="block w-64 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            >
-              <option value="">Sélectionner un événement</option>
-              {state.events.map(event => (
-                <option key={event.id} value={event.id}>{event.title}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+              >
+                <span>Événements</span>
+                <svg
+                  className={`h-5 w-5 transform ${isMobileMenuOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              {isMobileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+                >
+                  <div className="py-1">
+                    {events.map(event => (
+                      <button
+                        key={event.id}
+                        onClick={() => handleEventChange(event.id)}
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          event.id === currentEventId
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {event.title}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -66,27 +99,6 @@ export const AppToolbar = () => {
           </div>
         </div>
       </div>
-
-      {/* Mobile menu */}
-      <motion.div 
-        className="sm:hidden"
-        initial={false}
-        animate={{ height: isMobileMenuOpen ? 'auto' : 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        <div className="pt-2 pb-3 space-y-1">
-          <select 
-            onChange={handleEventChange}
-            value={state.currentEventId || ''}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-          >
-            <option value="">Sélectionner un événement</option>
-            {state.events.map(event => (
-              <option key={event.id} value={event.id}>{event.title}</option>
-            ))}
-          </select>
-        </div>
-      </motion.div>
     </motion.div>
   )
 }

@@ -1,51 +1,44 @@
-import { useQna } from '../context/QnaContext'
-import type { Question } from '../model'
-import { useCallback, useRef } from 'react'
+import { useDispatch } from 'react-redux'
+import type { AppDispatch } from '../store'
+import { upvoteQuestion } from '../slices/eventsSlice'
+import type { Question as QuestionType } from '../model'
 import { motion } from 'framer-motion'
-import { ArrowUpIcon } from '@heroicons/react/24/solid'
+import { useCallback } from 'react'
 
 interface Props {
-  question: Question
+  question: QuestionType
   eventId: string
 }
 
-export const QuestionComponent = ({ question, eventId }: Props) => {
-  const { upvoteQuestion } = useQna()
-  const lastVoteTime = useRef<number>(0)
+export const Question = ({ question, eventId }: Props) => {
+  const dispatch = useDispatch<AppDispatch>()
 
   const handleVote = useCallback(() => {
-    const now = Date.now()
-    if (now - lastVoteTime.current < 1000) {
-      return
-    }
-    lastVoteTime.current = now
-    
     console.log('Voting for question:', { questionId: question.id, eventId })
-    upvoteQuestion(eventId, question.id)
-  }, [question.id, eventId, upvoteQuestion])
+    dispatch(upvoteQuestion({ eventId, questionId: question.id }))
+  }, [dispatch, eventId, question.id])
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      className="bg-white rounded-lg shadow-md p-4 mb-4"
       whileHover={{ scale: 1.02 }}
-      className="bg-white rounded-lg shadow-md p-6 mb-4 border border-gray-100 hover:border-primary-200 transition-all"
+      transition={{ duration: 0.2 }}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex justify-between items-start">
         <div className="flex-1">
-          <p className="text-lg text-gray-800 mb-2">{question.content}</p>
+          <p className="text-gray-800 text-lg">{question.content}</p>
           {question.author && (
-            <p className="text-sm text-gray-500">Par {question.author}</p>
+            <p className="text-gray-500 text-sm mt-2">Par {question.author}</p>
           )}
         </div>
-        <motion.button 
-          onClick={handleVote}
-          whileHover={{ scale: 1.1 }}
+        <motion.button
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex flex-col items-center justify-center bg-primary-50 hover:bg-primary-100 text-primary-600 rounded-lg px-4 py-2 transition-colors"
+          onClick={handleVote}
         >
-          <ArrowUpIcon className="h-6 w-6" />
-          <span className="text-sm font-medium mt-1">{question.votes}</span>
+          <span>👍</span>
+          <span>{question.votes}</span>
         </motion.button>
       </div>
     </motion.div>

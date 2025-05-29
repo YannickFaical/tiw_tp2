@@ -1,115 +1,81 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useQna } from '../context/QnaContext'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState } from '../store'
+import { upvoteQuestion } from '../slices/eventsSlice'
+import { motion } from 'framer-motion'
 
 export const MobileView = () => {
-  const { eventId } = useParams()
-  const { setCurrentEvent } = useQna()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [gesturePoints, setGesturePoints] = useState<number[][]>([])
+  const { eventId, questionId } = useParams()
+  const dispatch = useDispatch()
+  const events = useSelector((state: RootState) => state.events.events)
+  const currentEvent = events.find(e => e.id === eventId)
+  const question = currentEvent?.questions.find(q => q.id === questionId)
+
+  const [isVoting, setIsVoting] = useState(false)
+  const voteTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  const handleVote = () => {
+    if (!eventId || !questionId || isVoting) return
+
+    setIsVoting(true)
+    dispatch(upvoteQuestion({ eventId, questionId }))
+
+    if (voteTimeoutRef.current) {
+      clearTimeout(voteTimeoutRef.current)
+    }
+
+    voteTimeoutRef.current = setTimeout(() => {
+      setIsVoting(false)
+    }, 1000)
+  }
 
   useEffect(() => {
-    if (eventId) {
-      setCurrentEvent(eventId)
-    }
-  }, [eventId, setCurrentEvent])
-
-  // Gestion du dessin
-  const startDrawing = (e: React.TouchEvent) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const point = [
-      e.touches[0].clientX - rect.left,
-      e.touches[0].clientY - rect.top
-    ]
-    
-    setIsDrawing(true)
-    setGesturePoints([point])
-  }
-
-  const draw = (e: React.TouchEvent) => {
-    if (!isDrawing) return
-    
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const newPoint = [
-      e.touches[0].clientX - rect.left,
-      e.touches[0].clientY - rect.top
-    ]
-    
-    setGesturePoints(prev => [...prev, newPoint])
-    redrawCanvas()
-  }
-
-  const endDrawing = () => {
-    if (gesturePoints.length > 10) {
-      recognizeGesture()
-    }
-    setIsDrawing(false)
-    setGesturePoints([])
-  }
-
-  const redrawCanvas = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    
-    // Ajustement de la taille
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width
-    canvas.height = rect.height
-    
-    // Dessin
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = '#3b82f6'
-    ctx.lineWidth = 4
-    ctx.beginPath()
-    
-    gesturePoints.forEach((point, i) => {
-      if (i === 0) {
-        ctx.moveTo(point[0], point[1])
-      } else {
-        ctx.lineTo(point[0], point[1])
-      }
-    })
-    
-    ctx.stroke()
-  }
-
-  const recognizeGesture = () => {
-    // Calcul des différences
-    const firstY = gesturePoints[0][1]
-    const lastY = gesturePoints[gesturePoints.length - 1][1]
-    const deltaY = lastY - firstY
-
-    // Seuil de reconnaissance
-    if (Math.abs(deltaY) > 50) {
-      if (deltaY > 0) {
-        console.log("Gesture: Swipe down")
-        // Action pour passer à la question suivante
-      } else {
-        console.log("Gesture: Swipe up") 
-        // Action pour revenir à la question précédente
+    return () => {
+      if (voteTimeoutRef.current) {
+        clearTimeout(voteTimeoutRef.current)
       }
     }
+  }, [])
+
+  if (!question) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500">Question non trouvée</p>
+      </div>
+    )
   }
 
   return (
-    <div className="h-full">
-      <canvas
-        ref={canvasRef}
-        onTouchStart={startDrawing}
-        onTouchMove={draw}
-        onTouchEnd={endDrawing}
-        className="w-full h-full touch-none"
-      />
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-2xl mx-auto p-4"
+    >
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{question.content}</h2>
+        
+        <div className="flex items-center justify-between mt-6">
+          <div className="flex items-center space-x-2">
+            <span className="text-gray-600">Votes:</span>
+            <span className="text-xl font-bold text-primary-600">{question.votes}</span>
+          </div>
+          
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleVote}
+            disabled={isVoting}
+            className={`px-6 py-2 rounded-full font-medium ${
+              isVoting
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-primary-600 text-white hover:bg-primary-700'
+            }`}
+          >
+            {isVoting ? 'Vote enregistré!' : 'Voter'}
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
   )
 }

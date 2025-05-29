@@ -1,9 +1,19 @@
-import { WebSocketServer, WebSocket } from 'ws'
-import { AppState } from './models'
+import { WebSocketServer } from 'ws'
 
-const wss = new WebSocketServer({ port: 3001 })
-let globalState: AppState = {
-  currentEventId: '1', // Set default event
+interface Question {
+  id: string
+  content: string
+  votes: number
+}
+
+interface Event {
+  id: string
+  title: string
+  questions: Question[]
+}
+
+// État initial de l'application
+const initialState = {
   events: [
     {
       id: '1',
@@ -16,59 +26,48 @@ let globalState: AppState = {
   ]
 }
 
+// Création du serveur WebSocket
+const wss = new WebSocketServer({ port: 3001 })
+
 // Fonction pour diffuser l'état à tous les clients
-const broadcastState = (excludeWs?: WebSocket) => {
+const broadcastState = () => {
   wss.clients.forEach(client => {
-    if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-      try {
-        client.send(JSON.stringify({
-          type: 'STATE_UPDATE',
-          payload: globalState
-        }))
-      } catch (error) {
-        console.error('Error broadcasting to client:', error)
-      }
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({
+        type: 'STATE_UPDATE',
+        payload: initialState
+      }))
     }
   })
 }
 
-wss.on('connection', (ws: WebSocket) => {
+// Gestion des connexions
+wss.on('connection', (ws) => {
   console.log('New client connected')
   
-  // Envoi de l'état initial
-  try {
-    ws.send(JSON.stringify({
-      type: 'STATE_UPDATE',
-      payload: globalState
-    }))
-  } catch (error) {
-    console.error('Error sending initial state:', error)
-  }
+  // Envoi de l'état initial au client
+  ws.send(JSON.stringify({
+    type: 'STATE_UPDATE',
+    payload: initialState
+  }))
 
-  ws.on('message', (message: Buffer) => {
+  // Gestion des messages
+  ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString())
       console.log('Received message:', data)
-      
+
       if (data.type === 'UPVOTE_QUESTION') {
-        const { eventId, questionId, votes } = data.payload
-        const event = globalState.events.find(e => e.id === eventId)
+        const { eventId, questionId } = data
+        const event = initialState.events.find(e => e.id === eventId)
+        
         if (event) {
           const question = event.questions.find(q => q.id === questionId)
           if (question) {
-            question.votes = votes
-            broadcastState(ws)
+            question.votes += 1
+            console.log(`Updated votes for question ${questionId}: ${question.votes}`)
+            broadcastState()
           }
-        }
-      } else if (data.type === 'STATE_UPDATE' && data.payload) {
-        // Vérifier si l'état a réellement changé
-        if (JSON.stringify(globalState) !== JSON.stringify(data.payload)) {
-          console.log('Updating state:', {
-            oldState: globalState,
-            newState: data.payload
-          })
-          globalState = data.payload
-          broadcastState(ws)
         }
       }
     } catch (error) {
@@ -76,17 +75,10 @@ wss.on('connection', (ws: WebSocket) => {
     }
   })
 
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error)
-  })
-
+  // Gestion de la déconnexion
   ws.on('close', () => {
     console.log('Client disconnected')
   })
 })
 
-wss.on('error', (error) => {
-  console.error('WebSocket server error:', error)
-})
-
-console.log('WebSocket server running on ws://localhost:3001')
+console.log('WebSocket server is running on port 3001')
