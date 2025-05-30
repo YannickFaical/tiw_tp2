@@ -1,15 +1,14 @@
 export interface Question {
   id: string
-  title: string
-  content: string
+  text: string
   votes: number
-  createdAt: string
+  answers: Answer[]
 }
 
 export interface Event {
   id: string
   title: string
-  description?: string
+  description: string
   createdAt: string
   questions: Question[]
 }
@@ -22,4 +21,11 @@ export interface AppState {
 
 export interface EventsState {
   events: Event[]
-} 
+}
+
+export interface Answer {
+  id: string
+  text: string
+  createdAt: string
+  author: string
+}

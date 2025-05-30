@@ -1,6 +1,6 @@
 import type { Middleware, MiddlewareAPI, Dispatch, UnknownAction } from '@reduxjs/toolkit';
 import { Socket, io } from 'socket.io-client';
-import { addEvent, updateEvent, deleteEvent, addQuestion, updateQuestion, deleteQuestion, upvoteQuestion } from '../slices/eventsSlice';
+import { addEvent, updateEvent, deleteEvent, addQuestion, updateQuestion, deleteQuestion, upvoteQuestion, addAnswer } from '../slices/eventsSlice';
 import { setCurrentEvent, setCurrentQuestion } from '../slices/appSlice';
 import type { Event } from '../types';
 
@@ -17,7 +17,8 @@ const actionsToPropagate = [
   'events/deleteQuestion',
   'events/upvoteQuestion',
   'app/setCurrentEvent',
-  'app/setCurrentQuestion'
+  'app/setCurrentQuestion',
+  'events/addAnswer'
 ] as const;
 
 // Set pour suivre les actions en cours de traitement

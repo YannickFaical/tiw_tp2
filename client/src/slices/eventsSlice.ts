@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from '../store'
-import type { Event, Question } from '../types'
+import type { Event, Question, Answer } from '../types'
 
 interface EventsState {
   events: Event[]
@@ -103,16 +103,19 @@ export const eventsSlice = createSlice({
         console.warn(`upvoteQuestion - Question not found: ${action.payload.questionId}`)
       }
     },
-    downvoteQuestion: (state, action: PayloadAction<{ eventId: string; questionId: string }>) => {
-      const { eventId, questionId } = action.payload
-      const event = state.events.find(e => e.id === eventId)
-      const question = event?.questions.find(q => q.id === questionId)
+    addAnswer: (state, action: PayloadAction<{ eventId: string; questionId: string; answer: Answer }>) => {
+      const event = state.events.find(e => e.id === action.payload.eventId)
+      const question = event?.questions.find(q => q.id === action.payload.questionId)
       if (question) {
-        if (question.votes > 0) {
-          question.votes -= 1
+        question.answers = question.answers || []
+        const existingAnswer = question.answers.find(a => a.id === action.payload.answer.id)
+        if (!existingAnswer) {
+          question.answers.push(action.payload.answer)
+        } else {
+          console.log('addAnswer - Answer already exists:', action.payload.answer.id)
         }
       } else {
-        console.warn(`downvoteQuestion - Question not found: ${questionId}`)
+        console.warn(`addAnswer - Question not found: ${action.payload.questionId}`)
       }
     }
   }
@@ -129,7 +132,7 @@ export const {
   updateQuestion,
   deleteQuestion,
   upvoteQuestion,
-  downvoteQuestion
+  addAnswer
 } = eventsSlice.actions
 
 export const selectEvents = (state: RootState) => state.events.events
