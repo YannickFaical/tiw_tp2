@@ -1,5 +1,5 @@
 import type { Middleware } from 'redux'
-import { setEvents } from '../slices/eventsSlice'
+import { setEvents, addEvent, updateEvent, deleteEvent, addQuestion, updateQuestion, deleteQuestion, upvoteQuestion } from '../slices/eventsSlice'
 import type { AnyAction } from '@reduxjs/toolkit'
 
 let socket: WebSocket | null = null
@@ -13,59 +13,105 @@ export const createWebSocketMiddleware = (): Middleware => {
       if (socket?.readyState === WebSocket.OPEN) return
 
       const wsUrl = `ws://${window.location.hostname}:3001`
-      console.log('Connecting to WebSocket server:', wsUrl)
-      
+      console.log('[WebSocket] Connecting to:', wsUrl)
+
       socket = new WebSocket(wsUrl)
 
       socket.onopen = () => {
-        console.log('WebSocket connected')
+        console.log('[WebSocket] Connected')
         reconnectAttempt = 0
       }
 
       socket.onclose = () => {
-        console.log('WebSocket disconnected')
+        console.log('[WebSocket] Disconnected')
         socket = null
-        
         if (reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttempt++
-          console.log(`Attempting to reconnect (${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS})...`)
+          console.log(`[WebSocket] Reconnecting attempt ${reconnectAttempt}...`)
           setTimeout(connectWebSocket, RECONNECT_DELAY)
         }
       }
 
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error)
+      socket.onerror = error => {
+        console.error('[WebSocket] Error:', error)
       }
 
-      socket.onmessage = (event) => {
+      socket.onmessage = event => {
         try {
           const data = JSON.parse(event.data)
-          console.log('Received WebSocket message:', data)
-          
-          if (data.type === 'STATE_UPDATE') {
-            store.dispatch(setEvents(data.payload.events))
+          console.log('[WebSocket] Message received:', data)
+
+          // Ici, on traite tous les types d’actions serveur et on les dispatch
+          switch (data.type) {
+            case 'STATE_UPDATE':
+              store.dispatch(setEvents(data.payload.events))
+              break
+
+            case 'ADD_EVENT':
+              store.dispatch(addEvent(data.payload))
+              break
+
+            case 'UPDATE_EVENT':
+              store.dispatch(updateEvent(data.payload))
+              break
+
+            case 'DELETE_EVENT':
+              store.dispatch(deleteEvent(data.payload))
+              break
+
+            case 'ADD_QUESTION':
+              store.dispatch(addQuestion(data.payload))
+              break
+
+            case 'UPDATE_QUESTION':
+              store.dispatch(updateQuestion(data.payload))
+              break
+
+            case 'DELETE_QUESTION':
+              store.dispatch(deleteQuestion(data.payload))
+              break
+
+            case 'UPVOTE_QUESTION':
+              store.dispatch(upvoteQuestion(data.payload))
+              break
+
+            default:
+              console.warn('[WebSocket] Unknown message type:', data.type)
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error)
+          console.error('[WebSocket] Failed to parse message:', error)
         }
       }
     }
 
-    // Connect to WebSocket when the middleware is initialized
     connectWebSocket()
 
-    return next => (action: unknown) => {
-      // Handle outgoing WebSocket messages
-      if (typeof action === 'object' && action !== null && 'type' in action && action.type === 'events/upvoteQuestion' && socket?.readyState === WebSocket.OPEN) {
-        const { eventId, questionId } = (action as AnyAction).payload
+    return next => (action: AnyAction) => {
+      const result = next(action)
+
+      // Envoi au serveur uniquement les actions que tu veux synchroniser
+      const syncActionTypes = [
+        'events/addEvent',
+        'events/updateEvent',
+        'events/deleteEvent',
+        'events/addQuestion',
+        'events/updateQuestion',
+        'events/deleteQuestion',
+        'events/upvoteQuestion',
+      ]
+
+      if (
+        socket?.readyState === WebSocket.OPEN &&
+        syncActionTypes.includes(action.type)
+      ) {
+        console.log('[WebSocket] Sending action to server:', action)
         socket.send(JSON.stringify({
-          type: 'UPVOTE_QUESTION',
-          eventId,
-          questionId
+          type: action.type.toUpperCase(), // Par exemple: EVENTS/ADD_EVENT => EVENTS/ADD_EVENT en majuscule, tu peux adapter
+          payload: action.payload
         }))
       }
 
-      return next(action)
+      return result
     }
   }
-} 
+}

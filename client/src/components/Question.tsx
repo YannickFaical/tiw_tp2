@@ -3,7 +3,7 @@ import type { AppDispatch } from '../store'
 import { upvoteQuestion } from '../slices/eventsSlice'
 import type { Question as QuestionType } from '../model'
 import { motion } from 'framer-motion'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 interface Props {
   question: QuestionType
@@ -12,11 +12,18 @@ interface Props {
 
 export const Question = ({ question, eventId }: Props) => {
   const dispatch = useDispatch<AppDispatch>()
+  const [loading, setLoading] = useState(false)
 
-  const handleVote = useCallback(() => {
-    console.log('Voting for question:', { questionId: question.id, eventId })
-    dispatch(upvoteQuestion({ eventId, questionId: question.id }))
-  }, [dispatch, eventId, question.id])
+  const handleVote = useCallback(async () => {
+    if (loading) return
+    setLoading(true)
+    try {
+      await dispatch(upvoteQuestion({ eventId, questionId: question.id })).unwrap()
+    } catch (e) {
+      console.error('Erreur lors du vote', e)
+    }
+    setLoading(false)
+  }, [dispatch, eventId, question.id, loading])
 
   return (
     <motion.div
@@ -32,13 +39,22 @@ export const Question = ({ question, eventId }: Props) => {
           )}
         </div>
         <motion.button
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          aria-label={`Voter pour la question: ${question.content}`}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          whileHover={{ scale: loading ? 1 : 1.05 }}
+          whileTap={{ scale: loading ? 1 : 0.95 }}
           onClick={handleVote}
+          disabled={loading}
         >
           <span>👍</span>
-          <span>{question.votes}</span>
+          <motion.span
+            key={question.votes}
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+          >
+            {question.votes}
+          </motion.span>
         </motion.button>
       </div>
     </motion.div>

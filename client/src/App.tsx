@@ -1,22 +1,24 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
+import { Provider } from 'react-redux'
+import { store } from './store'
+import { DeviceRouter } from './components/DeviceRouter'
+import AppRoutes from './routes'
 import { AppToolbar } from './components/AppToolbar'
-import { EventPanel } from './components/EventPanel'
-import { MobileView } from './components/MobileView'
+import { CssBaseline, Container } from '@mui/material'
 
-const App = () => {
+function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <AppToolbar />
-        <main className="container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<EventPanel />} />
-            <Route path="/admin/event/:eventId" element={<EventPanel />} />
-            <Route path="/event/:eventId/question/:questionId" element={<MobileView />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+    <Provider store={store}>
+      <BrowserRouter>
+        <DeviceRouter>
+          <CssBaseline />
+          <AppToolbar />
+          <Container maxWidth="lg" sx={{ mt: 4 }}>
+            <AppRoutes />
+          </Container>
+        </DeviceRouter>
+      </BrowserRouter>
+    </Provider>
   )
 }
 

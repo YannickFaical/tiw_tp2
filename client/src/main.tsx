@@ -5,15 +5,24 @@ import { store } from './store'
 import App from './App'
 import './index.css'
 
+// Déclaration globale pour exposer le store dans la console (utile en dev)
 declare global {
   interface Window {
-    mystore: unknown
+    mystore: typeof store
   }
 }
 
+// Expose le store pour les tests/debug en développement
 window.mystore = store
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')
+
+// Vérifie la présence de l'élément root
+if (!rootElement) throw new Error('Élément #root introuvable dans le DOM.')
+
+const root = ReactDOM.createRoot(rootElement)
+
+root.render(
   <React.StrictMode>
     <Provider store={store}>
       <App />

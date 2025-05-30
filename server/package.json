@@ -9,6 +9,7 @@
   "dependencies": {
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.23",
+    "@types/socket.io": "^3.0.2",
     "cors": "^2.8.5",
     "socket.io": "^4.8.1"
   },
